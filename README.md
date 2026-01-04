@@ -7,6 +7,12 @@ The visualizer is designed to be recorded via **OBS Browser Source** and edited 
 
 ---
 
+## 🖼️ Screenshot
+
+![Application screenshot](Information-Screenshot.jpg)
+
+---
+
 ## ✨ Features
 
 * Audio-reactive **mirrored equalizer** (centered, vertical bars)
