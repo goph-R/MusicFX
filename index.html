@@ -1,0 +1,312 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>Information – Visualizer</title>
+
+<!-- Modern font -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+
+<style>
+html, body {
+  margin: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  background: #000;
+  font-family: "Inter", system-ui, sans-serif;
+  cursor: none;
+}
+
+/* Background 
+.bg {
+  position: fixed;
+  inset: 0;
+  background: url("Information.png") center / cover no-repeat;
+  transform: scale(1.02);
+  z-index: 0;
+} */
+/* Video background */
+.bg-video {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+
+  /* Same subtle overscan as before */
+  transform: scale(1.02);
+
+  /* Optional color tweak */
+  filter: saturate(1.05) contrast(1.05);
+}
+
+
+/* Contrast overlay */
+.overlay {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(0,0,0,0.15), rgba(0,0,0,0.6));
+  z-index: 1;
+  pointer-events: none;
+}
+
+canvas {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+}
+
+/* Click-to-start */
+.prompt {
+  position: fixed;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  z-index: 5;
+  background: rgba(0,0,0,0.4);
+  cursor: pointer;
+  user-select: none;
+}
+
+.prompt.hidden { display: none; }
+
+.prompt .card {
+  padding: 20px 26px;
+  border-radius: 18px;
+  background: rgba(0,0,0,0.45);
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 15px 40px rgba(0,0,0,0.4);
+  color: rgba(255,255,255,0.95);
+  text-align: center;
+}
+
+.prompt h1 {
+  margin: 0 0 8px;
+  font-size: 22px;
+}
+
+.prompt p {
+  margin: 0;
+  font-size: 14px;
+  opacity: 0.85;
+}
+
+/* ===== Title & Tags ===== */
+.title-block {
+  position: fixed;
+  left: 50%;
+  bottom: 52px;
+  transform: translateX(-50%);
+  z-index: 4;
+  pointer-events: none;
+  max-width: min(980px, 92vw);
+
+  opacity: 0;
+  translate: 0 10px;
+  transition: opacity 900ms ease, translate 900ms ease;
+}
+
+.title-block.is-visible {
+  opacity: 1;
+  translate: 0 0;
+}
+
+.title-panel {
+  padding: 18px 26px 16px;
+  border-radius: 18px;
+  background: linear-gradient(180deg, rgba(0,0,0,0.15), rgba(0,0,0,0.6));
+  border: 1px solid rgba(255,255,255,0.12);
+  box-shadow: 0 18px 40px rgba(0,0,0,0.35);
+  backdrop-filter: blur(3px);
+}
+
+.title {
+  text-align: center;
+  font-size: 42px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: rgba(255,255,255,0.96);
+  text-shadow:
+    0 0 12px rgba(0,255,255,0.35),
+    0 0 24px rgba(255,0,200,0.15);
+}
+
+.separator {
+  width: 320px;
+  height: 2px;
+  margin: 14px auto 12px;
+  background: linear-gradient(
+    90deg,
+    rgba(0,255,255,0),
+    rgba(0,255,255,0.9),
+    rgba(255,0,200,0.9),
+    rgba(255,0,200,0)
+  );
+  box-shadow:
+    0 0 10px rgba(0,255,255,0.35),
+    0 0 18px rgba(255,0,200,0.2);
+  transition: box-shadow 80ms linear;
+}
+
+.tags {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 10px 18px;
+  font-size: 13px;
+  letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.72);
+}
+
+.tags span { white-space: nowrap; }
+
+/* Responsive */
+@media (max-width: 600px) {
+  .title { font-size: 32px; }
+  .separator { width: 240px; }
+}
+</style>
+</head>
+
+<body>
+<!--<div class="bg"></div>-->
+<video
+  class="bg-video"
+  src="Information.mp4"
+  autoplay
+  muted
+  loop
+  playsinline
+></video>
+<div class="overlay"></div>
+<canvas id="viz"></canvas>
+
+<div id="prompt" class="prompt">
+  <div class="card">
+    <h1>Click to play</h1>
+    <p>Starts music & visualizer</p>
+  </div>
+</div>
+
+<div id="titleBlock" class="title-block">
+  <div class="title-panel">
+    <div class="title">Information</div>
+    <div id="separator" class="separator"></div>
+    <div class="tags">
+      <span>#Fast Tempo Progressive</span>
+      <span>#Techno</span>
+      <span>#EDM</span>
+      <span>#Minimal Tech</span>
+      <span>#Future Technology</span>
+    </div>
+  </div>
+</div>
+
+<audio id="audio" src="Information.mp3" crossorigin="anonymous"></audio>
+
+<script>
+const canvas = document.getElementById("viz");
+const ctx = canvas.getContext("2d");
+const audioEl = document.getElementById("audio");
+const promptEl = document.getElementById("prompt");
+const titleBlock = document.getElementById("titleBlock");
+const separatorEl = document.getElementById("separator");
+
+function resize() {
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = innerWidth * dpr;
+  canvas.height = innerHeight * dpr;
+  canvas.style.width = innerWidth + "px";
+  canvas.style.height = innerHeight + "px";
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+}
+addEventListener("resize", resize);
+resize();
+
+let audioCtx, analyser, source, freqData;
+let running = false;
+
+function setupAudio() {
+  audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  analyser.smoothingTimeConstant = 0.88;
+  source = audioCtx.createMediaElementSource(audioEl);
+  source.connect(analyser);
+  analyser.connect(audioCtx.destination);
+  freqData = new Uint8Array(analyser.frequencyBinCount);
+}
+
+function updateBassGlow() {
+  let sum = 0;
+  for (let i = 2; i < 42; i++) sum += freqData[i];
+  const v = Math.pow((sum / 40) / 255, 1.8);
+
+  separatorEl.style.boxShadow =
+    `0 0 ${10 + v*40}px rgba(0,255,255,${0.3 + v*0.5}),
+     0 0 ${14 + v*55}px rgba(255,0,200,${0.2 + v*0.4})`;
+}
+
+function draw() {
+  if (!running) return;
+  ctx.clearRect(0,0,innerWidth,innerHeight);
+  analyser.getByteFrequencyData(freqData);
+  updateBassGlow();
+
+  const bars = 80;
+  const gap = 5;
+  const barW = 10;
+  const maxH = innerHeight * 0.42;
+  const cx = innerWidth / 2;
+  const cy = innerHeight / 2;
+  const totalW = bars * barW + (bars-1)*gap;
+  let x = cx - totalW/2;
+
+  ctx.shadowBlur = 20;
+  ctx.shadowColor = "rgba(0,255,255,0.35)";
+
+  for (let i=0;i<bars;i++) {
+    const v = freqData[8 + i*3] / 255;
+    const h = Math.pow(v,1.4) * maxH;
+    const grad = ctx.createLinearGradient(0,cy-h,0,cy+h);
+    grad.addColorStop(0,"rgba(0,255,255,0.9)");
+    grad.addColorStop(0.5,"rgba(255,255,255,0.85)");
+    grad.addColorStop(1,"rgba(255,0,200,0.9)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(x, cy-h, barW, h*2);
+    x += barW + gap;
+  }
+
+  requestAnimationFrame(draw);
+}
+
+function showTitle(){ titleBlock.classList.add("is-visible"); }
+function hideTitle(){ titleBlock.classList.remove("is-visible"); }
+
+async function start() {
+  setupAudio();
+  await audioCtx.resume();
+  await audioEl.play();
+  running = true;
+  promptEl.classList.add("hidden");
+
+  showTitle();
+  setTimeout(hideTitle, 12000);
+
+  audioEl.addEventListener("loadedmetadata", () => {
+    setTimeout(showTitle, Math.max(0,(audioEl.duration*1000)-15000));
+  }, { once:true });
+
+  draw();
+}
+
+promptEl.addEventListener("click", start);
+</script>
+</body>
+</html>
